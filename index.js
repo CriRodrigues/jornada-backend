@@ -60,7 +60,7 @@ app.delete('/item/:id', function (req, res){
 
   const id  = req.params.id;
   const item = lista.deleteOne(id);
-  req.redirec('/item')
+  req.redirec('/item');
 
   
   res.send(item);
