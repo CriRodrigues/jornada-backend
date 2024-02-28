@@ -1,73 +1,93 @@
 const express = require('express')
+const { MongoClient, ObjectId } = require('mongodb')
 
-const app = express()
+const dbUrl = 'mongodb+srv://rodriguescira01:a1B2c3D4@cluster0.znm4gkl.mongodb.net';
+const dbName = 'OceanJornada';
 
- 
+async function main() {
+  const client = new MongoClient(dbUrl);
 
-app.get('/', function (req, res) {
+  console.log('Conectando ao banco de dados...');
+  await client.connect();
+  console.log('Banco de dados conectado com sucesso!');
 
-res.send('Hello World');
+  const app = express();
 
-});
+  app.get('/', function (req, res) {
+    res.send('Hello, World!');
+  })
 
-app.get('/oi', function (req, res){
-    res.send('Hello Word');
-})
+  app.get('/oi', function (req, res) {
+    res.send('Olá, mundo!');
+  })
 
-let lista = ['Rick Sanches', 'Morty Smith', 'Sumner Smith'];
- 
-//read All -> [Get] /item
+  // Lista de Personagens
+  const lista = ['Rick Sanchez', 'Morty Smith', 'Summer Smith']
+  //              0               1              2
 
-app.get('/item', function (req, res){
-  res.send(lista);
+  const db = client.db(dbName)
+  const collection = db.collection('items');
 
-});
+  // Read All -> [GET] /item
+  app.get('/item', async function (req, res) {
+    // Realizamos a operação de find na collection do MongoDB
+    const items = await collection.find().toArray();
 
-// Read By ID -> [GET] /item/:id
-app.get('/item/:id', function (req, res) {
+    // Envio todos os documentos como resposta HTTP
+    res.send(items);
+  })
 
-//Acesso ID no parametro item.
-  const id = req.params.id;
+  // Read By ID -> [GET] /item/:id
+  app.get('/item/:id', async function (req, res) {
+    // Acesso o ID no parâmetro de rota
+    const id = req.params.id;
 
-// Acessa lista baseado no ID recebido
-  const item = lista[id];
+    // Acesso item na lista baseado no ID recebido
+    const items = await collection.findOne(
+      {_id: new ObjectId(id)}
+    )
 
-//Envio do item recebido como resposta http.
-  res.send(item);
+    // Envio o item obtido como resposta HTTP
+    res.send(items);
+  });
 
-});
+  // Sinalizamos que o corpo da requisição está em JSON
+  app.use(express.json());
 
-app.use(express.json());
+  // Create -> [POST] /item
+  app.post('/item', async function (req, res) {
 
-// criando um post /item
-app.post('/item', function (req, res){
-  
-  // Extaindo o corpo da requisição
-  const body = req.body;
-  
-  //pegando o nome (String) que foi enviado
-  const item = body.name;
-  
-  //item recebe um nome enviado pela requisição.
-  lista.push(item);
+    // Pegamos o nome (string) que foi enviado dentro do corpo
+    const items = req.body;
 
+    // Colocamos o nome dentro da lista de itens
+     await collection.insertOne(items);
 
-  //Enviado com sucesso
-  res.send('adiconado com sucesso!!');
-});
+    // Enviamos uma resposta de sucesso
+    res.send('Item adicionado com sucesso!')
+  });
 
-app.delete('/item/:id', function (req, res){
+  app.put('/item/:id', async function (req, res){
+    const id = req.params.id;
+    const novoItem = req.body;
 
-  const id  = req.params.id;
-  const item = lista.deleteOne(id);
-  req.redirec('/item');
+    await collection.updateOne(
+      {_id: new ObjectId(id)},
+      { $set: novoItem}
+    )
+    res.send('item atualizado com sucesso!!!');
+  });
 
-  
-  res.send(item);
+  app.delete('/item/:id', async function (req, res){
+    const id = req.params.id;
 
+    await collection.deleteOne({ _id: new ObjectId(id)});
 
+    req.send('item deletado com sucesso!!');
 
-});
+  });
 
+  app.listen(3000)
+}
 
-app.listen(3000)
+main()
